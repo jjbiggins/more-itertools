@@ -623,7 +623,7 @@ def random_combination_with_replacement(iterable, r):
     """
     pool = tuple(iterable)
     n = len(pool)
-    indices = sorted(randrange(n) for i in range(r))
+    indices = sorted(randrange(n) for _ in range(r))
     return tuple(pool[i] for i in indices)
 
 
