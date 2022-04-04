@@ -153,7 +153,7 @@ class FirstTests(TestCase):
     def test_many(self):
         # Also try it on a generator expression to make sure it works on
         # whatever those return, across Python versions.
-        self.assertEqual(mi.first(x for x in range(4)), 0)
+        self.assertEqual(mi.first(iter(range(4))), 0)
 
     def test_one(self):
         self.assertEqual(mi.first([3]), 3)
@@ -495,7 +495,7 @@ class PeekableTests(PeekableMixinTests, TestCase):
         it = mi.peekable(range(5))
         # Don't directly use the range() object to avoid any range-specific
         # optimizations
-        it.prepend(*(x for x in range(5)))
+        it.prepend(*iter(range(5)))
         actual = list(it)
         expected = list(chain(range(5), range(5)))
         self.assertEqual(actual, expected)
@@ -505,7 +505,7 @@ class PeekableTests(PeekableMixinTests, TestCase):
         it = mi.peekable(range(5))
         # Don't directly use the range() object to avoid any range-specific
         # optimizations
-        it.prepend(*(x for x in range(20000)))
+        it.prepend(*iter(range(20000)))
         actual = list(it)
         expected = list(chain(range(20000), range(5)))
         self.assertEqual(actual, expected)
@@ -549,10 +549,10 @@ class DistinctPermutationsTests(TestCase):
 
         """
         # a generator
-        iterable = (c for c in ['z', 'a', 'a', 'q', 'q', 'q', 'y'])
+        iterable = iter(['z', 'a', 'a', 'q', 'q', 'q', 'y'])
         test_output = sorted(mi.distinct_permutations(iterable))
         # "reload" it
-        iterable = (c for c in ['z', 'a', 'a', 'q', 'q', 'q', 'y'])
+        iterable = iter(['z', 'a', 'a', 'q', 'q', 'q', 'y'])
         ref_output = sorted(set(permutations(iterable)))
         self.assertEqual(test_output, ref_output)
 
@@ -598,7 +598,7 @@ class IlenTests(TestCase):
         )
 
         # Empty
-        self.assertEqual(mi.ilen(x for x in range(0)), 0)
+        self.assertEqual(mi.ilen(iter(range(0))), 0)
 
         # Iterable with __len__
         self.assertEqual(mi.ilen(list(range(6))), 6)
@@ -633,7 +633,7 @@ class MinMaxTests(TestCase):
         self.assertTupleEqual(mi.minmax(12, 3, 4, key=str), (12, 4))
 
     def test_iterables(self):
-        self.assertTupleEqual(mi.minmax(x for x in [0, 1, 2, 3]), (0, 3))
+        self.assertTupleEqual(mi.minmax(iter([0, 1, 2, 3])), (0, 3))
         self.assertTupleEqual(
             mi.minmax(map(str, [3, 5.5, 'a', 2])), ('2', 'a')
         )
@@ -646,9 +646,7 @@ class MinMaxTests(TestCase):
             mi.minmax({(), (1, 4, 2), 'abcde', range(4)}, key=len),
             ((), 'abcde'),
         )
-        self.assertTupleEqual(
-            mi.minmax((x for x in [10, 3, 25]), key=str), (10, 3)
-        )
+        self.assertTupleEqual(mi.minmax(iter([10, 3, 25]), key=str), (10, 3))
 
     def test_default(self):
         with self.assertRaises(ValueError):
@@ -716,20 +714,20 @@ class IntersperseTest(TestCase):
     """Tests for intersperse()"""
 
     def test_even(self):
-        iterable = (x for x in '01')
+        iterable = iter('01')
         self.assertEqual(
             list(mi.intersperse(None, iterable)), ['0', None, '1']
         )
 
     def test_odd(self):
-        iterable = (x for x in '012')
+        iterable = iter('012')
         self.assertEqual(
             list(mi.intersperse(None, iterable)), ['0', None, '1', None, '2']
         )
 
     def test_nested(self):
         element = ('a', 'b')
-        iterable = (x for x in '012')
+        iterable = iter('012')
         actual = list(mi.intersperse(element, iterable))
         expected = ['0', ('a', 'b'), '1', ('a', 'b'), '2']
         self.assertEqual(actual, expected)
@@ -748,7 +746,7 @@ class IntersperseTest(TestCase):
             (7, '_', ['0', '1', '2', '3', '4', '5']),
             (3, ['a', 'b'], ['0', '1', '2', ['a', 'b'], '3', '4', '5']),
         ]:
-            iterable = (x for x in '012345')
+            iterable = iter('012345')
             actual = list(mi.intersperse(element, iterable, n=n))
             self.assertEqual(actual, expected)
 
@@ -778,7 +776,7 @@ class UniqueToEachTests(TestCase):
     def test_mixed(self):
         """When the input iterables contain different types the function should
         still behave properly"""
-        iterables = ['x', (i for i in range(3)), [1, 2, 3], tuple()]
+        iterables = ['x', iter(range(3)), [1, 2, 3], tuple()]
         self.assertEqual(mi.unique_to_each(*iterables), [['x'], [0], [3], []])
 
 
@@ -845,7 +843,7 @@ class WindowedTests(TestCase):
 
 class SubstringsTests(TestCase):
     def test_basic(self):
-        iterable = (x for x in range(4))
+        iterable = iter(range(4))
         actual = list(mi.substrings(iterable))
         expected = [
             (0,),
@@ -889,7 +887,7 @@ class SubstringsTests(TestCase):
 
 class SubstringsIndexesTests(TestCase):
     def test_basic(self):
-        sequence = [x for x in range(4)]
+        sequence = list(range(4))
         actual = list(mi.substrings_indexes(sequence))
         expected = [
             ([0], 0, 1),
@@ -1083,7 +1081,7 @@ class InterleaveLongestTests(TestCase):
     def test_mixed_types(self):
         it_list = ['a', 'b', 'c', 'd']
         it_str = '12345'
-        it_gen = (x for x in range(3))
+        it_gen = iter(range(3))
         actual = list(mi.interleave_longest(it_list, it_str, it_gen))
         expected = ['a', '1', 0, 'b', '2', 1, 'c', '3', 2, 'd', '4', '5']
         self.assertEqual(actual, expected)
@@ -1314,13 +1312,13 @@ class SlicedTests(TestCase):
         self.assertEqual(list(mi.sliced(seq, 4)), ['ABCD', 'EFGH', 'I'])
 
     def test_not_sliceable(self):
-        seq = (x for x in 'ABCDEFGHI')
+        seq = iter('ABCDEFGHI')
 
         with self.assertRaises(TypeError):
             list(mi.sliced(seq, 3))
 
     def test_odd_and_strict(self):
-        seq = [x for x in 'ABCDEFGHI']
+        seq = list('ABCDEFGHI')
 
         with self.assertRaises(ValueError):
             list(mi.sliced(seq, 4, strict=True))
@@ -1749,7 +1747,7 @@ class SplitIntoTests(TestCase):
     def test_generator_iterable_integrity(self):
         """Check that if ``iterable`` is an iterator, it is consumed only by as
         many items as the sum of ``sizes``."""
-        iterable = (i for i in range(10))
+        iterable = iter(range(10))
         sizes = [2, 3]
 
         expected = [[0, 1], [2, 3, 4]]
@@ -1764,7 +1762,7 @@ class SplitIntoTests(TestCase):
         """Check that if ``sizes`` is an iterator, it is consumed only until a
         ``None`` item is reached"""
         iterable = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        sizes = (i for i in [1, 2, None, 3, 4])
+        sizes = iter([1, 2, None, 3, 4])
 
         expected = [[1], [2, 3], [4, 5, 6, 7, 8, 9]]
         actual = list(mi.split_into(iterable, sizes))
@@ -2845,22 +2843,13 @@ class NumericRangeTests(TestCase):
             )
 
     def test_hash(self):
-        for args, expected in [
-            ((1.0, 6.0, 1.5), hash((1.0, 5.5, 1.5))),
-            ((1.0, 7.0, 1.5), hash((1.0, 5.5, 1.5))),
-            ((1.0, 7.5, 1.5), hash((1.0, 7.0, 1.5))),
-            ((1.0, 1.5, 1.5), hash((1.0, 1.0, 1.5))),
-            ((1.5, 1.0, 1.5), hash(range(0, 0))),
-            ((1.5, 1.5, 1.5), hash(range(0, 0))),
-            (
+        for args, expected in [((1.0, 6.0, 1.5), hash((1.0, 5.5, 1.5))), ((1.0, 7.0, 1.5), hash((1.0, 5.5, 1.5))), ((1.0, 7.5, 1.5), hash((1.0, 7.0, 1.5))), ((1.0, 1.5, 1.5), hash((1.0, 1.0, 1.5))), ((1.5, 1.0, 1.5), hash(range(0))), ((1.5, 1.5, 1.5), hash(range(0))), (
                 (Decimal("1.0"), Decimal("9.0"), Decimal("1.5")),
                 hash((Decimal("1.0"), Decimal("8.5"), Decimal("1.5"))),
-            ),
-            (
+            ), (
                 (Fraction(1, 1), Fraction(5, 1), Fraction(3, 2)),
                 hash((Fraction(1, 1), Fraction(4, 1), Fraction(3, 2))),
-            ),
-            (
+            ), (
                 (
                     datetime(2019, 3, 29),
                     datetime(2019, 3, 30),
@@ -2873,8 +2862,7 @@ class NumericRangeTests(TestCase):
                         timedelta(hours=10),
                     )
                 ),
-            ),
-        ]:
+            )]:
             self.assertEqual(expected, hash(mi.numeric_range(*args)))
 
     def test_iter_twice(self):
@@ -3513,19 +3501,19 @@ class AlwaysReversibleTests(TestCase):
     def test_nonseq_reversed(self):
         # Create a non-reversible generator from a sequence
         with self.assertRaises(TypeError):
-            reversed(x for x in range(10))
+            reversed(iter(range(10)))
 
         self.assertEqual(
-            list(reversed(range(10))),
-            list(mi.always_reversible(x for x in range(10))),
+            list(reversed(range(10))), list(mi.always_reversible(iter(range(10))))
         )
+
         self.assertEqual(
-            list(reversed([1, 2, 3])),
-            list(mi.always_reversible(x for x in [1, 2, 3])),
+            list(reversed([1, 2, 3])), list(mi.always_reversible(iter([1, 2, 3])))
         )
+
         self.assertNotEqual(
             reversed((1, 2)).__class__,
-            mi.always_reversible(x for x in (1, 2)).__class__,
+            mi.always_reversible(iter((1, 2))).__class__,
         )
 
 
@@ -3672,7 +3660,7 @@ class RlocateTests(TestCase):
     def test_window_size_large(self):
         iterable = [1, 2, 3, 4]
         pred = lambda a, b, c, d, e: True
-        for it in (iterable, iter(iterable)):
+        for _ in (iterable, iter(iterable)):
             actual = list(mi.rlocate(iterable, pred, window_size=5))
             expected = [0]
             self.assertEqual(actual, expected)
@@ -3680,7 +3668,7 @@ class RlocateTests(TestCase):
     def test_window_size_zero(self):
         iterable = [1, 2, 3, 4]
         pred = lambda: True
-        for it in (iterable, iter(iterable)):
+        for _ in (iterable, iter(iterable)):
             with self.assertRaises(ValueError):
                 list(mi.locate(iterable, pred, window_size=0))
 
@@ -3720,7 +3708,7 @@ class ReplaceTests(TestCase):
 
     def test_window_size_count(self):
         iterable = range(10)
-        pred = lambda *args: (args == (0, 1, 2)) or (args == (7, 8, 9))
+        pred = lambda *args: args in [(0, 1, 2), (7, 8, 9)]
         substitutes = []
         actual = list(
             mi.replace(iterable, pred, substitutes, count=1, window_size=3)
@@ -3831,7 +3819,7 @@ class _FrozenMultiset(Set):
         return hash(self._collection)
 
     def __repr__(self):
-        return "FrozenSet([{}]".format(", ".join(repr(x) for x in iter(self)))
+        return f'FrozenSet([{", ".join((repr(x) for x in iter(self)))}]'
 
 
 class SetPartitionsTests(TestCase):
@@ -4031,7 +4019,6 @@ class IchunkedTests(TestCase):
         def gen():
             yield 0
             raise RuntimeError
-            yield from count(1)
 
         it = mi.ichunked(gen(), 4)
         chunk = next(it)

@@ -46,7 +46,7 @@ class TabulateTests(TestCase):
     def test_simple_tabulate(self):
         """Test the happy path"""
         t = mi.tabulate(lambda x: x)
-        f = tuple([next(t) for _ in range(3)])
+        f = tuple(next(t) for _ in range(3))
         self.assertEqual(f, (0, 1, 2))
 
     def test_count(self):
@@ -81,24 +81,24 @@ class ConsumeTests(TestCase):
 
     def test_sanity(self):
         """Test basic functionality"""
-        r = (x for x in range(10))
+        r = iter(range(10))
         mi.consume(r, 3)
         self.assertEqual(3, next(r))
 
     def test_null_consume(self):
         """Check the null case"""
-        r = (x for x in range(10))
+        r = iter(range(10))
         mi.consume(r, 0)
         self.assertEqual(0, next(r))
 
     def test_negative_consume(self):
         """Check that negative consumsion throws an error"""
-        r = (x for x in range(10))
+        r = iter(range(10))
         self.assertRaises(ValueError, lambda: mi.consume(r, -1))
 
     def test_total_consume(self):
         """Check that iterator is totally consumed by default"""
-        r = (x for x in range(10))
+        r = iter(range(10))
         mi.consume(r)
         self.assertRaises(StopIteration, lambda: next(r))
 

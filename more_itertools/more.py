@@ -366,10 +366,7 @@ class peekable:
         self._cache.extendleft(reversed(items))
 
     def __next__(self):
-        if self._cache:
-            return self._cache.popleft()
-
-        return next(self._it)
+        return self._cache.popleft() if self._cache else next(self._it)
 
     def _get_slice(self, index):
         # Normalize the slice's arguments
@@ -642,15 +639,16 @@ def strictly_n(iterable, n, too_short=None, too_long=None):
     """
     if too_short is None:
         too_short = lambda item_count: raise_(
-            ValueError,
-            'Too few items in iterable (got {})'.format(item_count),
+            ValueError, f'Too few items in iterable (got {item_count})'
         )
+
 
     if too_long is None:
         too_long = lambda item_count: raise_(
             ValueError,
-            'Too many items in iterable (got at least {})'.format(item_count),
+            f'Too many items in iterable (got at least {item_count})',
         )
+
 
     it = iter(iterable)
     for i in range(n):
@@ -1030,10 +1028,7 @@ class bucket:
         yield from self._cache.keys()
 
     def __getitem__(self, value):
-        if not self._validator(value):
-            return iter(())
-
-        return self._get_values(value)
+        return self._get_values(value) if self._validator(value) else iter(())
 
 
 def spy(iterable, n=1):
@@ -1577,8 +1572,7 @@ def repeat_last(iterable, default=None):
 
     """
     item = _marker
-    for item in iterable:
-        yield item
+    yield from iterable
     final = default if item is _marker else item
     yield from repeat(final)
 
@@ -2075,7 +2069,9 @@ class numeric_range(abc.Sequence, abc.Hashable):
 
     def __init__(self, *args):
         argc = len(args)
-        if argc == 1:
+        if argc == 0:
+            raise TypeError(f'numeric_range expected at least 1 argument, got {argc}')
+        elif argc == 1:
             (self._stop,) = args
             self._start = type(self._stop)(0)
             self._step = type(self._stop - self._start)(1)
@@ -2084,16 +2080,8 @@ class numeric_range(abc.Sequence, abc.Hashable):
             self._step = type(self._stop - self._start)(1)
         elif argc == 3:
             self._start, self._stop, self._step = args
-        elif argc == 0:
-            raise TypeError(
-                'numeric_range expected at least '
-                '1 argument, got {}'.format(argc)
-            )
         else:
-            raise TypeError(
-                'numeric_range expected at most '
-                '3 arguments, got {}'.format(argc)
-            )
+            raise TypeError(f'numeric_range expected at most 3 arguments, got {argc}')
 
         self._zero = type(self._step)(0)
         if self._step == self._zero:
@@ -2102,35 +2090,31 @@ class numeric_range(abc.Sequence, abc.Hashable):
         self._init_len()
 
     def __bool__(self):
-        if self._growing:
-            return self._start < self._stop
-        else:
-            return self._start > self._stop
+        return self._start < self._stop if self._growing else self._start > self._stop
 
     def __contains__(self, elem):
         if self._growing:
             if self._start <= elem < self._stop:
                 return (elem - self._start) % self._step == self._zero
-        else:
-            if self._start >= elem > self._stop:
-                return (self._start - elem) % (-self._step) == self._zero
+        elif self._start >= elem > self._stop:
+            return (self._start - elem) % (-self._step) == self._zero
 
         return False
 
     def __eq__(self, other):
-        if isinstance(other, numeric_range):
-            empty_self = not bool(self)
-            empty_other = not bool(other)
-            if empty_self or empty_other:
-                return empty_self and empty_other  # True if both empty
-            else:
-                return (
-                    self._start == other._start
-                    and self._step == other._step
-                    and self._get_by_index(-1) == other._get_by_index(-1)
-                )
-        else:
+        if not isinstance(other, numeric_range):
             return False
+        empty_self = not bool(self)
+        empty_other = not bool(other)
+        return (
+            empty_self and empty_other
+            if empty_self or empty_other
+            else (
+                self._start == other._start
+                and self._step == other._step
+                and self._get_by_index(-1) == other._get_by_index(-1)
+            )
+        )
 
     def __getitem__(self, key):
         if isinstance(key, int):
@@ -2155,8 +2139,7 @@ class numeric_range(abc.Sequence, abc.Hashable):
             return numeric_range(start, stop, step)
         else:
             raise TypeError(
-                'numeric range indices must be '
-                'integers or slices, not {}'.format(type(key).__name__)
+                f'numeric range indices must be integers or slices, not {type(key).__name__}'
             )
 
     def __hash__(self):
@@ -2196,13 +2179,9 @@ class numeric_range(abc.Sequence, abc.Hashable):
 
     def __repr__(self):
         if self._step == 1:
-            return "numeric_range({}, {})".format(
-                repr(self._start), repr(self._stop)
-            )
+            return f"numeric_range({repr(self._start)}, {repr(self._stop)})"
         else:
-            return "numeric_range({}, {}, {})".format(
-                repr(self._start), repr(self._stop), repr(self._step)
-            )
+            return f"numeric_range({repr(self._start)}, {repr(self._stop)}, {repr(self._step)})"
 
     def __reversed__(self):
         return iter(
@@ -2220,13 +2199,12 @@ class numeric_range(abc.Sequence, abc.Hashable):
                 q, r = divmod(value - self._start, self._step)
                 if r == self._zero:
                     return int(q)
-        else:
-            if self._start >= value > self._stop:
-                q, r = divmod(self._start - value, -self._step)
-                if r == self._zero:
-                    return int(q)
+        elif self._start >= value > self._stop:
+            q, r = divmod(self._start - value, -self._step)
+            if r == self._zero:
+                return int(q)
 
-        raise ValueError("{} is not in numeric range".format(value))
+        raise ValueError(f"{value} is not in numeric range")
 
     def _get_by_index(self, i):
         if i < 0:
@@ -2426,10 +2404,7 @@ class islice_extended:
 
     def __init__(self, iterable, *args):
         it = iter(iterable)
-        if args:
-            self._iterable = _islice_helper(it, slice(*args))
-        else:
-            self._iterable = it
+        self._iterable = _islice_helper(it, slice(*args)) if args else it
 
     def __iter__(self):
         return self
@@ -2505,11 +2480,7 @@ def _islice_helper(it, s):
             # If start and stop are both negative they are comparable and
             # we can just slice. Otherwise we can adjust start to be negative
             # and then slice.
-            if start < 0:
-                i, j = start, stop
-            else:
-                i, j = min(start - len_iter, -1), None
-
+            i, j = (start, stop) if start < 0 else (min(start - len_iter, -1), None)
             for index, item in list(cache)[i:j:step]:
                 yield item
         else:
@@ -2690,7 +2661,7 @@ class SequenceView(Sequence):
         return len(self._target)
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, repr(self._target))
+        return f'{self.__class__.__name__}({repr(self._target)})'
 
 
 class seekable:
@@ -2781,10 +2752,7 @@ class seekable:
 
     def __init__(self, iterable, maxlen=None):
         self._source = iter(iterable)
-        if maxlen is None:
-            self._cache = []
-        else:
-            self._cache = deque([], maxlen)
+        self._cache = [] if maxlen is None else deque([], maxlen)
         self._index = None
 
     def __iter__(self):
@@ -3113,12 +3081,11 @@ def replace(iterable, pred, substitutes, count=None, window_size=1):
         # For example, if the iterable is (0, 1, 2, 3, 4...)
         # and the window size is 2, we have (0, 1), (1, 2), (2, 3)...
         # If the predicate matches on (0, 1), we need to zap (0, 1) and (1, 2)
-        if pred(*w):
-            if (count is None) or (n < count):
-                n += 1
-                yield from substitutes
-                consume(windows, window_size - 1)
-                continue
+        if pred(*w) and ((count is None) or (n < count)):
+            n += 1
+            yield from substitutes
+            consume(windows, window_size - 1)
+            continue
 
         # If there was no match (or we've reached the replacement limit),
         # yield the first item from the window.
@@ -3544,9 +3511,8 @@ def sample(iterable, k, weights=None):
     iterable = iter(iterable)
     if weights is None:
         return _sample_unweighted(iterable, k)
-    else:
-        weights = iter(weights)
-        return _sample_weighted(iterable, k, weights)
+    weights = iter(weights)
+    return _sample_weighted(iterable, k, weights)
 
 
 def is_sorted(iterable, key=None, reverse=False, strict=False):
@@ -3655,9 +3621,7 @@ class callback_iter:
 
     @property
     def done(self):
-        if self._future is None:
-            return False
-        return self._future.done()
+        return False if self._future is None else self._future.done()
 
     @property
     def result(self):
